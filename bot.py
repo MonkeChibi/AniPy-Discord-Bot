@@ -137,7 +137,7 @@ async def google(ctx,*, query):
 				for j in search(query, tld="co.in", num=1, stop=1, pause=2):
 						await ctx.send(f"\n:point_right: {j}")
 
-#Grabs the Pfp and embeds it
+#Pfp command, embeds it
 @bot.command()
 async def pfp(ctx, member: Member = None):
  if not member:
@@ -161,9 +161,11 @@ async def info(ctx):
     embed.set_thumbnail(url=f"{ctx.guild.icon_url}")
     await ctx.send(embed=embed)
 
+	
+#making the bot react to strings
 @bot.listen()
 async def on_message(message):
-    if "retard" in message.content.lower():
+    if "cool" in message.content.lower(): #Replace cool with preferred str
         if message.author==bot.user :
             return
         else:
@@ -177,10 +179,20 @@ async def on_message(message):
     if message.author==bot.user :
         return
     else:
-        if message.mention_everyone:
+        if message.mention_everyone:     #Reacts to @everyone pings
             await message.channel.send('url goes here')
         else:
             return
+
+@bot.listen()
+async def on_message(message):
+    if 'cool' in message.content.lower():    #Replace cool with preferred str
+        if message.author==bot.user:
+            return
+        else :
+            emoji = 'Emote goes here'   #Put the wanted emote, for custom emotes it's <:EmojiName:EmojiID>
+            await message.add_reaction(emoji)
+
 
 #Events          
 @bot.event
