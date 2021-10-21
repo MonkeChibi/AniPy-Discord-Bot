@@ -44,6 +44,8 @@ SAMPLE_SPREADSHEET_ID = os.getenv('SAMPLE_SPREADSHEET_ID')
 SAMPLE_RANGE1 = os.getenv('SAMPLE_RANGE1')
 SAMPLE_RANGE2 = os.getenv('SAMPLE_RANGE2')
 
+
+#delete 'help_command=None' if you want default help command
 bot = commands.Bot(command_prefix=';', help_command=None)
 
 
@@ -71,7 +73,7 @@ sheet = service.spreadsheets()
 print(f"Startup complete!\t[ {(time.time()-startTime):.2f}s ]")
 
 
-
+#custom help command
 @bot.command()
 async def help(ctx):
     embed=discord.Embed(title="Chibi Bot Help", description = "Use prefix ';' before <command>", color=discord.Color.blue())
@@ -93,7 +95,7 @@ async def help(ctx):
 #        print('{0} rows retrieved.'.format(len(rows)))
 
 
-
+#ping command
 @bot.command()
 async def ping(ctx):
     if round(bot.latency * 1000) <= 50:
@@ -107,12 +109,14 @@ async def ping(ctx):
     await ctx.send(embed=embed)
 
 
-#exit command, yet to role lock it
+#exit command
 #@bot.command(name='exit')
 #async def testCommand(ctx, *args):
 #    await ctx.send("Closing the Bot now")
 #    exit()
 
+
+#youtube search command
 @bot.command()
 async def youtube(ctx, *, search):
     query_string = parse.urlencode({'search_query': search})
@@ -121,10 +125,10 @@ async def youtube(ctx, *, search):
     async with ctx.typing():
         search_results = re.findall( r"watch\?v=(\S{11})", html_content.read().decode())
         print(search_results)
-        # I will put just the first result, you can loop the response to show more results
+        # You can loop to show more results
         await ctx.send('https://www.youtube.com/watch?v=' + search_results[0])
 
-
+#Google search command
 @bot.command()
 async def google(ctx,*, query):
 		author = ctx.author.mention
@@ -133,7 +137,7 @@ async def google(ctx,*, query):
 				for j in search(query, tld="co.in", num=1, stop=1, pause=2):
 						await ctx.send(f"\n:point_right: {j}")
 
-
+#Grabs the Pfp and embeds it
 @bot.command()
 async def pfp(ctx, member: Member = None):
  if not member:
@@ -145,7 +149,7 @@ async def pfp(ctx, member: Member = None):
  await ctx.send(embed=embed)
 
 
-
+#Server Info command
 @bot.command()
 async def info(ctx):
     embed = discord.Embed(title=f"{ctx.guild.name}", description="test bot", timestamp=datetime.datetime.utcnow(), color=discord.Color.blue())
@@ -178,11 +182,12 @@ async def on_message(message):
         else:
             return
 
-            
+#Events          
 @bot.event
 async def on_ready():
+    #edit this to change it's rich presence 
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=";help"))
-    print('My Ready is Body')
+    print('Up and Running!')
 
 
 
