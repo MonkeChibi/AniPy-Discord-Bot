@@ -167,7 +167,7 @@ async def on_message(message):
         if message.author==bot.user :
             return
         else:
-            await message.channel.send('https://cdn.discordapp.com/emojis/899366731896737793.png?size=128')
+            await message.channel.send('url goes here')
             await bot.process_commands(message)
 
 
@@ -178,7 +178,7 @@ async def on_message(message):
         return
     else:
         if message.mention_everyone:
-            await message.channel.send('https://cdn.discordapp.com/attachments/894206029745778721/900628932712349736/unknown.png')
+            await message.channel.send('url goes here')
         else:
             return
 
