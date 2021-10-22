@@ -17,7 +17,7 @@ Uses the Anilist GraphOL API.
 # Requirements :
  * Python 3.9.7+
  * A Discord Developer Account which you can make [here](https://discord.com/developers/docs/intro)
- * Stuff listed in [requirements.txt](
+ * Stuff listed in [requirements.txt](https://github.com/saronik/PythonDiscordBot/blob/main/requirements.txt)
 # **To run :**
   1. Clone this repo.
   2. Modify the discord token in [.env](https://github.com/saronik/PythonDiscordBot/blob/main/.env) after getting the token the Discord Developer Portal
