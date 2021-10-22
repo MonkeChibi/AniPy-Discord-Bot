@@ -7,6 +7,7 @@ Uses the Anilist GraphOL API.
 * client ping 
 * youtube search 
 * google search
+* emoji add/detele
 * Anilist commands : 
   * Search anime by title/ID
   * Search manga by title/ID
