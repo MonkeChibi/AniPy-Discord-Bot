@@ -11,7 +11,6 @@ startTime = time.time()
 print(f"Importing modules...")
 
 
-
 import os
 import datetime
 import re
@@ -22,12 +21,22 @@ import discord
 from discord import Member
 from discord.ext import commands
 from dotenv import load_dotenv
-
+from discord.utils import get
 import pickle
 import os.path
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+from commands.searchAnime import animeSearch
+from commands.searchManga import mangaSearch
+from commands.searchStudio import studioSearch
+from commands.searchStaff import staffSearch
+from commands.searchCharacter import charSearch
+from commands.searchUser import *
+from discord import HTTPException
+from io import BytesIO
+import aiohttp
+from dotenv import load_dotenv
 
 
 
@@ -44,7 +53,7 @@ SAMPLE_SPREADSHEET_ID = os.getenv('SAMPLE_SPREADSHEET_ID')
 SAMPLE_RANGE1 = os.getenv('SAMPLE_RANGE1')
 SAMPLE_RANGE2 = os.getenv('SAMPLE_RANGE2')
 
-
+#can cahnge the prefix to anything you like
 #delete 'help_command=None' if you want default help command
 bot = commands.Bot(command_prefix=';', help_command=None)
 
@@ -77,14 +86,22 @@ print(f"Startup complete!\t[ {(time.time()-startTime):.2f}s ]")
 @bot.command()
 async def help(ctx):
     embed=discord.Embed(title="Chibi Bot Help", description = "Use prefix ';' before <command>", color=discord.Color.blue())
-    embed.add_field(name="ping", value = " Check you pingu\n")
-    embed.add_field(name="info", value = "server stats\n")
-    embed.add_field(name="pfp", value = "embeds your profile picture\n")
-    embed.add_field(name="youtube", value =";youtube <query>\n")
-    embed.add_field(name="google", value = ";google <query>\n")
+    embed.set_author(name='Help')
+    embed.add_field(name=";ping", value = " Check you pingu\n", inline=False)
+    embed.add_field(name=";info", value = "Server stats\n", inline=False)
+    embed.add_field(name=";pfp <@user>", value = "Embeds your profile picture\n", inline=False)
+    embed.add_field(name=";youtube <query>", value ="Search youtube for a video", inline=False)
+    embed.add_field(name=";google <query>", value = "Search Google", inline=False)
+    embed.add_field(name=';anime <title>', value="Search anime by title or ID.", inline=False)
+    embed.add_field(name=';manga <title>', value="Search manga by title or ID.", inline=False)
+    embed.add_field(name=';user <username>', value="Search up a user by their username.", inline=False)
+    embed.add_field(name=';studio <studio name>', value="Search a studio by their name.", inline=False)
+    embed.add_field(name=';staff <staff name>', value="Search an actor by their name.", inline=False)
+    embed.add_field(name=';char <character name>', value="Search a character by their name.", inline=False)
+    embed.add_field(name=';add <url> <name>', value="Add an emote", inline=False)
+    embed.add_field(name=';delete <name>', value="Delete an emote", inline=False)
     embed.set_thumbnail(url=bot.user.avatar_url)
     await ctx.send(embed=embed)
-
 
 #Google sheets search command
 #@bot.command(name='find')
@@ -132,9 +149,9 @@ async def youtube(ctx, *, search):
 @bot.command()
 async def google(ctx,*, query):
 		author = ctx.author.mention
-		await ctx.channel.send(f"Gibing results wait <:CollegeWale:895336406833070170> {author}")
-		async with ctx.typing():
-				for j in search(query, tld="co.in", num=1, stop=1, pause=2):
+		await ctx.channel.send(f"Here are your results {author}!")
+		async with ctx.typing():	#makes the bot appear as typing
+				for j in search(query, tld="co.in", num=1, stop=1, pause=2):	#can loop and show more results instead of just the first
 						await ctx.send(f"\n:point_right: {j}")
 
 #Pfp command, embeds it
@@ -160,6 +177,83 @@ async def info(ctx):
     # embed.set_thumbnail(url=f"{custom url}")
     embed.set_thumbnail(url=f"{ctx.guild.icon_url}")
     await ctx.send(embed=embed)
+
+#EMOJI ADDING/Removing
+@bot.command()
+async def add(ctx, url: str, *, name):
+	guild = ctx.guild
+	if ctx.author.guild_permissions.manage_emojis:
+		async with aiohttp.ClientSession() as ses:
+			async with ses.get(url) as r:
+
+				try:
+					img_or_gif = BytesIO(await r.read())
+					b_value = img_or_gif.getvalue()
+					if r.status in range(200, 299):
+						emoji = await guild.create_custom_emoji(image=b_value, name=name)
+						await ctx.send(f'Successfully created emoji: <:{name}:{emoji.id}>')
+						await ses.close()
+					else:
+						await ctx.send(f'Error when making request | {r.status} response.')
+						await ses.close()
+
+				except discord.HTTPException:
+					await ctx.send('File size is too big!')
+
+@bot.command()
+async def delete(ctx, emoji: discord.Emoji):
+	guild = ctx.guild
+	if ctx.author.guild_permissions.manage_emojis:
+		await ctx.send(f'Successfully deleted (or not): {emoji}')
+		await emoji.delete()
+	
+	
+#ANILIST SECTION
+@bot.command(aliases=["ANIME", "a"])
+async def anime(ctx, *, title):
+    embed = animeSearch(title)
+    await ctx.send(embed=embed)
+
+@bot.command(aliases=["MANGA", "m"])
+async def manga(ctx, *, title):
+    embed = mangaSearch(title)
+    await ctx.send(embed=embed)
+
+@bot.command(aliases=['STUDIO', 's'])
+async def studio(ctx, *, studioName):
+    embed = studioSearch(studioName)
+    await ctx.send(embed=embed)
+
+
+@bot.command(aliases=['STAFF', 'st'])
+async def staff(ctx, *, staffName):
+    embed = staffSearch(staffName)
+    await ctx.send(embed=embed)
+
+
+@bot.command(aliases=["CHARACTER", 'ch', 'char'])
+async def character(ctx, *, charName):
+    embed = charSearch(charName)
+    await ctx.send(embed=embed)
+
+@bot.command(aliases=['USER', 'u'])
+async def user(ctx, *, userName):
+    result = generateUserInfo(userName)
+    if result:
+        try:
+            userEmbed = userSearch(result)
+            await ctx.send(embed=userEmbed)
+
+            userAnimeEmbed = userAnime(result)
+            await ctx.send(embed=userAnimeEmbed)
+
+            userMangaEmbed = userManga(result)
+            await ctx.send(embed=userMangaEmbed)
+
+        except HTTPException:
+            pass
+    else:
+        await ctx.send(embed=userError(userName))
 
 	
 #making the bot react to strings
