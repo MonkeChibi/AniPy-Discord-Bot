@@ -7,7 +7,7 @@ Uses the Anilist GraphQL API.
 * client ping 
 * youtube search 
 * google search
-* emoji add/detele
+* emoji add/delete
 * kick members
 * ban/unban members
 * Anilist commands : 
