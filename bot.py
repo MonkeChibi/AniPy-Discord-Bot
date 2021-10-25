@@ -103,6 +103,36 @@ async def help(ctx):
     embed.set_thumbnail(url=bot.user.avatar_url)
     await ctx.send(embed=embed)
 
+
+#Kicking / Banning members
+@bot.command(pass_context=True, name="kick")
+@commands.has_permissions(kick_members = True)
+async def kick(ctx, member : discord.Member, *, reason = None):
+    await member.kick(reason=reason)
+
+
+@bot.command()
+@commands.has_permissions(ban_members = True)
+async def ban(ctx, member : discord.Member, *, reason = None):
+    await member.ban(reason = reason)
+
+@bot.command()
+@commands.has_permissions(administrator = True)
+async def unban(ctx, *, member):
+    banned_users = await ctx.guild.bans()
+    member_name, member_discriminator = member.split("#")
+
+    for ban_entry in banned_users:
+        user = ban_entry.user
+
+        if (user.name, user.discriminator) == (member_name, member_discriminator):
+            await ctx.guild.unban(user)
+            await ctx.send(f'Unbanned {user.mention}')
+            return
+
+
+
+
 #Google sheets search command
 #@bot.command(name='find')
 #async def testCommand(ctx, *args):
