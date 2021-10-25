@@ -1,6 +1,6 @@
 # Python Discord Anilist Bot
 **Discord bot** written in Python (3.9.7), can be used as a template, also has Anilist commands
-Uses the Anilist GraphOL API.
+Uses the Anilist GraphQL API.
 # Commands include : 
 * server info 
 * pfp 
@@ -8,6 +8,8 @@ Uses the Anilist GraphOL API.
 * youtube search 
 * google search
 * emoji add/detele
+* kick members
+* ban/unban members
 * Anilist commands : 
   * Search anime by title/ID
   * Search manga by title/ID
