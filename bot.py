@@ -24,8 +24,6 @@ from dotenv import load_dotenv
 from discord.utils import get
 import pickle
 import os.path
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from commands.searchAnime import animeSearch
 from commands.searchManga import mangaSearch
@@ -44,40 +42,12 @@ print(f"Importing .env configuration...")
 
 
 
-# If modifying these scopes, delete the file token.pickle.
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
-SAMPLE_SPREADSHEET_ID = os.getenv('SAMPLE_SPREADSHEET_ID')
-SAMPLE_RANGE1 = os.getenv('SAMPLE_RANGE1')
-SAMPLE_RANGE2 = os.getenv('SAMPLE_RANGE2')
 
 #can cahnge the prefix to anything you like
 #delete 'help_command=None' if you want default help command
 bot = commands.Bot(command_prefix=';', help_command=None)
-
-
-
-print("Initializing Google Authentication...")
-
-
-creds = None
-if os.path.exists('token.pickle'):
-    with open('token.pickle', 'rb') as token:
-        creds = pickle.load(token)
-if not creds or not creds.valid:
-    if creds and creds.expired and creds.refresh_token:
-        creds.refresh(Request())
-    else:
-        flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-        creds = flow.run_local_server(port=0)
-    with open('token.pickle', 'wb') as token:
-        pickle.dump(creds, token)
-service = build('sheets', 'v4', credentials=creds)
-sheet = service.spreadsheets()
-
-
 
 print(f"Startup complete!\t[ {(time.time()-startTime):.2f}s ]")
 
@@ -131,17 +101,6 @@ async def unban(ctx, *, member):
             return
 
 
-
-
-#Google sheets search command
-#@bot.command(name='find')
-#async def testCommand(ctx, *args):
-#    if(len(args)==0):
-#        await ctx.send("Can't search for nothing retard")
-#    else:
-#        print('{0} rows retrieved.'.format(len(rows)))
-
-
 #ping command
 @bot.command()
 async def ping(ctx):
@@ -156,7 +115,7 @@ async def ping(ctx):
     await ctx.send(embed=embed)
 
 
-#exit command
+#exit command, suggest to role or ID lock it
 #@bot.command(name='exit')
 #async def testCommand(ctx, *args):
 #    await ctx.send("Closing the Bot now")
