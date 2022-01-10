@@ -1,5 +1,5 @@
 # Python Discord Anilist Bot
-**Discord bot** written in Python (3.9.7), can be used as a template, also has Anilist commands
+**Discord bot** written in Python (3.9.7+), can be used as a template, also has Anilist commands
 Uses the Anilist GraphQL API.
 # Commands include : 
 * server info 
