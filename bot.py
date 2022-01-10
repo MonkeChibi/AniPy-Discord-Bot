@@ -10,20 +10,23 @@ startTime = time.time()
 
 print(f"Importing modules...")
 
-
+import discord
+from discord.ext import commands
+from discord import Client, Intents, Embed
+from discord_slash import SlashCommand, SlashContext
+from discord_slash.utils.manage_commands import create_choice, create_option, create_permission
+from discord_slash.model import SlashCommandPermissionType
+import re
 import os
 import datetime
-import re
-from urllib import parse, request
-from googlesearch import search
-import re
-import discord
-from discord import Member
-from discord.ext import commands
-from dotenv import load_dotenv
-from discord.utils import get
 import pickle
 import os.path
+import aiohttp
+from io import BytesIO
+from urllib import parse, request
+from googlesearch import search
+from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from commands.searchAnime import animeSearch
 from commands.searchManga import mangaSearch
@@ -32,9 +35,9 @@ from commands.searchStaff import staffSearch
 from commands.searchCharacter import charSearch
 from commands.searchUser import *
 from discord import HTTPException
-from io import BytesIO
-import aiohttp
+from discord.utils import get
 from dotenv import load_dotenv
+from discord import Member
 
 
 
@@ -48,14 +51,16 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 #can cahnge the prefix to anything you like
 #delete 'help_command=None' if you want default help command
 bot = commands.Bot(command_prefix=';', help_command=None)
+slash = SlashCommand(bot, sync_commands=True)
+
 
 print(f"Startup complete!\t[ {(time.time()-startTime):.2f}s ]")
 
 
 #custom help command
-@bot.command()
-async def help(ctx):
-    embed=discord.Embed(title="Chibi Bot Help", description = "Use prefix ';' before <command>", color=discord.Color.blue())
+@slash.slash(name="help", description="Help Command")
+async def help(ctx: SlashContext):
+    embed=discord.Embed(title="Chibi Bot Help", description = "Use prefix '/' before <command>", color=discord.Color.blue())
     embed.set_author(name='Help')
     embed.add_field(name=";ping", value = " Check you pingu\n", inline=False)
     embed.add_field(name=";info", value = "Server stats\n", inline=False)
@@ -65,6 +70,7 @@ async def help(ctx):
     embed.add_field(name=';anime <title>', value="Search anime by title or ID.", inline=False)
     embed.add_field(name=';manga <title>', value="Search manga by title or ID.", inline=False)
     embed.add_field(name=';user <username>', value="Search up a user by their username.", inline=False)
+    embed.add_field(name=';reverse <image link>', value="Search an anime by a link to an image.", inline=False)
     embed.add_field(name=';studio <studio name>', value="Search a studio by their name.", inline=False)
     embed.add_field(name=';staff <staff name>', value="Search an actor by their name.", inline=False)
     embed.add_field(name=';char <character name>', value="Search a character by their name.", inline=False)
@@ -74,21 +80,41 @@ async def help(ctx):
     await ctx.send(embed=embed)
 
 
-#Kicking / Banning members
+#Moderation commands : Kicking/Banning Members
+@slash.slash(name="kick",
+            description="kick members (if you have permission)",
+            guild_ids=[],
+            options=[create_option(name="member", description="name of the member", required=True, option_type=6),
+            
+                    create_option(name="reason", description="Reason for kick", required=False, option_type=3)]
+            )
 @bot.command(pass_context=True, name="kick")
 @commands.has_permissions(kick_members = True)
 async def kick(ctx, member : discord.Member, *, reason = None):
     await member.kick(reason=reason)
+    embed = discord.Embed(title='Chibi Bot', description='Moderation', color=discord.Color.red())
+    embed.add_field(name=f'User {member} has been kicked',value=f'Reason : {reason}', inline=False)
+    await ctx.send(embed=embed)
 
-
-@bot.command()
+@slash.slash(name="ban",
+            description="ban members (if you have permission)",
+            guild_ids=[],
+            options=[create_option(name="member", description="name of the member", required=True, option_type=6),
+                    create_option(name="reason", description="Reason for ban", required=False, option_type=3)]
+            )
 @commands.has_permissions(ban_members = True)
 async def ban(ctx, member : discord.Member, *, reason = None):
     await member.ban(reason = reason)
+    embed = discord.Embed(title='Chibi Bot', description='Moderation', color=discord.Color.red())
+    embed.add_field(name=f'User {member} has been banned',value=f'Reason : {reason}', inline=False)
+    await ctx.send(embed=embed)
 
-@bot.command()
+@slash.slash(name="unban",
+            description="unban member",
+            guild_ids=[],
+            options=[create_option(name="member", description="name of the member", required=True, option_type=3)])
 @commands.has_permissions(administrator = True)
-async def unban(ctx, *, member):
+async def unban(ctx:SlashContext, member):
     banned_users = await ctx.guild.bans()
     member_name, member_discriminator = member.split("#")
 
@@ -97,13 +123,16 @@ async def unban(ctx, *, member):
 
         if (user.name, user.discriminator) == (member_name, member_discriminator):
             await ctx.guild.unban(user)
-            await ctx.send(f'Unbanned {user.mention}')
+            embed = discord.Embed(title='Chibi Bot', description='Moderation', color=discord.Color.red())
+            embed.add_field(name=f'Unbanned {user.mention}', value=f'User {member} has been unbanned', inline=False)
+            await ctx.send(embed=embed)
+
             return
 
 
 #ping command
-@bot.command()
-async def ping(ctx):
+@slash.slash(name="ping", description="Ping command")
+async def ping(ctx: SlashContext):
     if round(bot.latency * 1000) <= 50:
         embed=discord.Embed(title="PING", description=f":ping_pong: Pingpingpingpingping! The ping is **{round(bot.latency *1000)}** milliseconds!", color=0x44ff44)
     elif round(bot.latency * 1000) <= 100:
@@ -115,7 +144,7 @@ async def ping(ctx):
     await ctx.send(embed=embed)
 
 
-#exit command, suggest to role or ID lock it
+#exit command, recommended to role or ID lock it
 #@bot.command(name='exit')
 #async def testCommand(ctx, *args):
 #    await ctx.send("Closing the Bot now")
@@ -123,53 +152,63 @@ async def ping(ctx):
 
 
 #youtube search command
-@bot.command()
-async def youtube(ctx, *, search):
-    query_string = parse.urlencode({'search_query': search})
+@slash.slash(name = "youtube",
+            description="Youtube Search",
+            options=[create_option(name="query", description="Term to be searched", required=True, option_type=3)])
+async def youtube(ctx:SlashContext, query):
+    await ctx.defer()
+    query_string = parse.urlencode({'search_query': query})
     html_content = request.urlopen('http://www.youtube.com/results?' + query_string)
     # print(html_content.read().decode())
-    async with ctx.typing():
-        search_results = re.findall( r"watch\?v=(\S{11})", html_content.read().decode())
-        print(search_results)
-        # You can loop to show more results
-        await ctx.send('https://www.youtube.com/watch?v=' + search_results[0])
+    search_results = re.findall( r"watch\?v=(\S{11})", html_content.read().decode())
+    print(search_results)
+    # I will put just the first result, you can loop the response to show more results
+    await ctx.send('https://www.youtube.com/watch?v=' + search_results[0])
 
 #Google search command
-@bot.command()
-async def google(ctx,*, query):
-		author = ctx.author.mention
-		await ctx.channel.send(f"Here are your results {author}!")
-		async with ctx.typing():	#makes the bot appear as typing
-				for j in search(query, tld="co.in", num=1, stop=1, pause=2):	#can loop and show more results instead of just the first
-						await ctx.send(f"\n:point_right: {j}")
+@slash.slash(name="google",
+            description="Google search",
+            options=[create_option(name="query", description="Term to be googled", required=True, option_type=3)])
+async def google(ctx:SlashContext, query):
+    await ctx.defer()
+    for j in search(query, tld="co.in", num=1, stop=1, pause=2):          #can loop to show multiple results
+	       await ctx.send(f"{j}")
 
 #Pfp command, embeds it
-@bot.command()
-async def pfp(ctx, member: Member = None):
- if not member:
-     member = ctx.author
- embed = discord.Embed(title=f"{member}",color=0x40cc88, timestamp=ctx.message.created_at)
- embed.set_image(url=member.avatar_url)
- embed.set_footer(text=f"Requested by {ctx.author}")
- embed.set_thumbnail(url=bot.user.avatar_url)
- await ctx.send(embed=embed)
+@slash.slash(name="pfp",
+            description="Embeds your pfp",
+            guild_ids=[],
+            options=[create_option(name="member", description="can leave blank if you just want yours", required=False, option_type=6)])
+async def pfp(ctx:SlashContext, member: Member = None):
+    if not member:
+            member = ctx.author
+    embed = discord.Embed(title=f"{member}",color=0x40cc88)
+    embed.set_image(url=member.avatar_url)
+    embed.set_footer(text=f"Requested by {ctx.author}")
+    await ctx.send(embed=embed)
 
 
 #Server Info command
-@bot.command()
-async def info(ctx):
-    embed = discord.Embed(title=f"{ctx.guild.name}", description="test bot", timestamp=datetime.datetime.utcnow(), color=discord.Color.blue())
+@slash.slash(name="info",
+            description="Server Info",
+            guild_ids=[])
+async def info(ctx:SlashContext):
+    embed = discord.Embed(title=f"{ctx.guild.name}", description="Chibi's bot", timestamp=datetime.datetime.utcnow(), color=discord.Color.blue())
     embed.add_field(name="Server created at", value=f"{ctx.guild.created_at}")
     embed.add_field(name="Server Owner", value=f"{ctx.guild.owner}")
     embed.add_field(name="Server Region", value=f"{ctx.guild.region}")
     embed.add_field(name="Server ID", value=f"{ctx.guild.id}")
     # embed.set_thumbnail(url=f"{custom url}")
     embed.set_thumbnail(url=f"{ctx.guild.icon_url}")
-    await ctx.send(embed=embed)
+    await ctx.send(embed=embed))
 
 #EMOJI ADDING/Removing
-@bot.command()
-async def add(ctx, url: str, *, name):
+@slash.slash(name="add",
+            description="add an emote",
+            guild_ids=[],
+            options=[create_option(name="url", description="Emote link/png", required=True, option_type=3),
+                    create_option(name="name", description="Emote Name", required=True, option_type=3)])
+async def add(ctx:SlashContext, url: str, name):
 	guild = ctx.guild
 	if ctx.author.guild_permissions.manage_emojis:
 		async with aiohttp.ClientSession() as ses:
@@ -188,46 +227,63 @@ async def add(ctx, url: str, *, name):
 
 				except discord.HTTPException:
 					await ctx.send('File size is too big!')
-
+#Command to delete emotes is still using the old command prefix
 @bot.command()
 async def delete(ctx, emoji: discord.Emoji):
 	guild = ctx.guild
 	if ctx.author.guild_permissions.manage_emojis:
 		await ctx.send(f'Successfully deleted (or not): {emoji}')
-		await emoji.delete()
+		await guild.delete_custom_emoji(emoji)
 	
 	
 #ANILIST SECTION
-@bot.command(aliases=["ANIME", "a"])
-async def anime(ctx, *, title):
+@slash.slash(name="anime",
+            description="Search for anime on Anilist",
+            guild_ids=[],
+            options=[create_option(name="title", description="Title of anime", required=True, option_type=3)])
+async def anime(ctx:SlashContext, title):
     embed = animeSearch(title)
     await ctx.send(embed=embed)
 
-@bot.command(aliases=["MANGA", "m"])
-async def manga(ctx, *, title):
+@slash.slash(name="manga",
+            description="Search for manga on Anilist",
+            guild_ids=[],
+            options=[create_option(name="title", description="Title of manga", required=True, option_type=3)])
+async def manga(ctx:SlashContext, title):
     embed = mangaSearch(title)
     await ctx.send(embed=embed)
 
-@bot.command(aliases=['STUDIO', 's'])
-async def studio(ctx, *, studioName):
-    embed = studioSearch(studioName)
+@slash.slash(name="studio",
+            description="Search for studio on Anilist",
+            guild_ids=[],
+            options=[create_option(name="studioname", description="studio name", required=True, option_type=3)])
+async def studio(ctx:SlashContext , studioname):
+    embed = studioSearch(studioname)
+    await ctx.send(embed=embed)
+
+@slash.slash(name="staff",
+            description="Search for staff on Anilist",
+            guild_ids=],
+            options=[create_option(name="staffname", description="staff name", required=True, option_type=3)])
+async def staff(ctx:SlashContext, staffname):
+    embed = staffSearch(staffname)
+    await ctx.send(embed=embed)
+
+@slash.slash(name="char",
+            description="Search for character on Anilist",
+            guild_ids=[],
+            options=[create_option(name="charname", description="name of the character", required=True, option_type=3)])
+async def character(ctx:SlashContext, charname):
+    embed = charSearch(charname)
     await ctx.send(embed=embed)
 
 
-@bot.command(aliases=['STAFF', 'st'])
-async def staff(ctx, *, staffName):
-    embed = staffSearch(staffName)
-    await ctx.send(embed=embed)
-
-
-@bot.command(aliases=["CHARACTER", 'ch', 'char'])
-async def character(ctx, *, charName):
-    embed = charSearch(charName)
-    await ctx.send(embed=embed)
-
-@bot.command(aliases=['USER', 'u'])
-async def user(ctx, *, userName):
-    result = generateUserInfo(userName)
+@slash.slash(name="user",
+            description="Search for user on Anilist",
+            guild_ids=[],
+            options=[create_option(name="username", description="username of anilist", required=True, option_type=3)])
+async def user(ctx:SlashContext, username):
+    result = generateUserInfo(username)
     if result:
         try:
             userEmbed = userSearch(result)
@@ -242,13 +298,14 @@ async def user(ctx, *, userName):
         except HTTPException:
             pass
     else:
-        await ctx.send(embed=userError(userName))
+        await ctx.send(embed=userError(username))
+
 
 	
 #making the bot react to strings
 @bot.listen()
 async def on_message(message):
-    if "cool" in message.content.lower(): #Replace cool with preferred str
+    if "cool" in message.content.lower(): #Replace cool with preferred keyword(s)
         if message.author==bot.user :
             return
         else:
@@ -269,7 +326,7 @@ async def on_message(message):
 
 @bot.listen()
 async def on_message(message):
-    if 'cool' in message.content.lower():    #Replace cool with preferred str
+    if 'cool' in message.content.lower():    #Replace cool with preferred keyword(s)
         if message.author==bot.user:
             return
         else :
@@ -281,7 +338,7 @@ async def on_message(message):
 @bot.event
 async def on_ready():
     #edit this to change it's rich presence 
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=";help"))
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="/help"))
     print('Up and Running!')
 
 
