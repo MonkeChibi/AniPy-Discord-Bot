@@ -1,6 +1,5 @@
 # Python Discord Anilist Bot
-**Discord bot** written in Python (3.9.7+), can be used as a template, also has Anilist commands
-Uses the Anilist GraphQL API.
+**Discord bot** written in Python (3.9.7+), can be used as a template, also has Anilist (through Anilit's GraphQL API), OpenWeather and IQAIR's APIs for weather forecast
 # Commands include : 
 * server info 
 * pfp 
