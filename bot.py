@@ -229,8 +229,77 @@ async def ping(ctx: SlashContext):
 #    await ctx.send("Closing the Bot now")
 #    exit()
 
+#Google Search Command
+@slash.slash(name="google",
+            description="Google search",
+            options=[create_option(name="query", description="Term to be googled", required=True, option_type=3)])
+async def google(ctx:SlashContext, query):
+    await ctx.defer()
 
-#youtube search command
+    def get_source(url):
+        try :
+            session = HTMLSession()
+            response = session.get(url)
+            return response
+
+        except requests.exceptions.RequestException as e:
+            print(e)
+    
+    def scrape_google(query):
+        query = urllib.parse.quote_plus(query)
+        response = get_source("https://www.google.co.in/search?q=" + query)
+
+        links = list(response.html.absolute_links)
+        google_domains = ('https://www.google.', 
+                      'https://google.', 
+                      'https://webcache.googleusercontent.', 
+                      'http://webcache.googleusercontent.', 
+                      'https://policies.google.',
+                      'https://support.google.',
+                      'https://maps.google.')
+        for url in links[:]:
+            if url.startswith(google_domains):
+                links.remove(url)
+        return links
+    results = scrape_google(query)
+    print(results)
+
+    Gpage1= results[0]
+    Gpage2= results[1]
+    Gpage3= results[2]
+    bot.g_pages=[Gpage1, Gpage2, Gpage3]
+    buttons=[u"\u23EA", u"\u2B05", u"\u27A1", u"\u23E9"]
+    current=0
+    msg=await ctx.send(bot.g_pages[current])
+
+    for button in buttons:
+        await msg.add_reaction(button)
+    
+    while True:
+        try:
+            reaction, user = await bot.wait_for("reaction_add", check=lambda reaction, user: user == ctx.author and reaction.emoji in buttons, timeout=60.00)
+        except asyncio.TimeoutError:
+            return print("test")
+        else:
+            previous_page = current
+            if reaction.emoji == u"\u23EA":
+                current = 0
+            elif reaction.emoji == u"\u2B05" :
+                if current > 0:
+                    current -=1
+            elif reaction.emoji ==  u"\u27A1":
+                if current < len(bot.g_pages)-1:
+                    current +=1
+            elif reaction.emoji == u"\u23E9":
+                current = len(bot.g_pages)-1
+            for button in buttons:
+                await msg.remove_reaction(button, ctx.author)
+            if current != previous_page:
+                message = bot.g_pages[current]
+                await msg.edit(content=message)
+
+
+#Youtube search command
 @slash.slash(name = "youtube",
             description="Youtube Search",
             options=[create_option(name="query", description="Term to be searched", required=True, option_type=3)])
@@ -242,16 +311,49 @@ async def youtube(ctx:SlashContext, query):
     search_results = re.findall( r"watch\?v=(\S{11})", html_content.read().decode())
     print(search_results)
     # I will put just the first result, you can loop the response to show more results
-    await ctx.send('https://www.youtube.com/watch?v=' + search_results[0])
+    yt_page1 = ('https://www.youtube.com/watch?v=' + search_results[0])
+    yt_page2 = ('https://www.youtube.com/watch?v=' + search_results[1])
+    yt_page3 = ('https://www.youtube.com/watch?v=' + search_results[2])
+    yt_page4 = ('https://www.youtube.com/watch?v=' + search_results[3])
+    yt_page5 = ('https://www.youtube.com/watch?v=' + search_results[4])
+    bot.yt_pages = [yt_page1, yt_page2, yt_page3, yt_page4, yt_page5]
+    buttons = [u"\u23EA", u"\u2B05", u"\u27A1", u"\u23E9"] # skip to start, left, right, skip to end
+    current = 0
+    msg = await ctx.send(bot.yt_pages[current])
 
-#Google search command
-@slash.slash(name="google",
-            description="Google search",
-            options=[create_option(name="query", description="Term to be googled", required=True, option_type=3)])
-async def google(ctx:SlashContext, query):
-    await ctx.defer()
-    for j in search(query, tld="co.in", num=1, stop=1, pause=2):          #can loop to show multiple results
-	       await ctx.send(f"{j}")
+    for button in buttons:
+        await msg.add_reaction(button)
+        
+    while True:
+        try:
+            reaction, user = await bot.wait_for("reaction_add", check=lambda reaction, user: user == ctx.author and reaction.emoji in buttons, timeout=60.0)
+
+        except asyncio.TimeoutError:
+            return print("test")
+
+        else:
+            previous_page = current
+            if reaction.emoji == u"\u23EA":
+                current = 0
+                
+            elif reaction.emoji == u"\u2B05":
+                if current > 0:
+                    current -= 1
+                    
+            elif reaction.emoji == u"\u27A1":
+                if current < len(bot.yt_pages)-1:
+                    current += 1
+
+            elif reaction.emoji == u"\u23E9":
+                current = len(bot.yt_pages)-1
+
+            for button in buttons:
+                await msg.remove_reaction(button, ctx.author)
+
+            if current != previous_page:
+                message = bot.yt_pages[current]
+                await msg.edit(content=message)
+
 
 #Pfp command, embeds it
 @slash.slash(name="pfp",
