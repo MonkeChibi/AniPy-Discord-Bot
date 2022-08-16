@@ -440,9 +440,9 @@ async def weather(ctx:SlashContext , city:str):
 	
 	
 #EMOJI ADDING/Removing
-@slash.slash(name="add",
+@slash.slash(name="emote_add",
             description="add an emote",
-            guild_ids=[],
+            guild_ids=Guild_ID,
             options=[create_option(name="url", description="Emote link/png", required=True, option_type=3),
                     create_option(name="name", description="Emote Name", required=True, option_type=3)])
 async def add(ctx:SlashContext, url: str, name):
@@ -464,19 +464,25 @@ async def add(ctx:SlashContext, url: str, name):
 
 				except discord.HTTPException:
 					await ctx.send('File size is too big!')
-#Command to delete emotes is still using the old command prefix
-@bot.command()
-async def delete(ctx, emoji: discord.Emoji):
-	guild = ctx.guild
-	if ctx.author.guild_permissions.manage_emojis:
-		await ctx.send(f'Successfully deleted (or not): {emoji}')
-		await guild.delete_custom_emoji(emoji)
-	
-	
+
+@slash.slash(name="emote_delete",
+            description="delete an emote",
+            guild_ids=Guild_ID,
+            options=[create_option(name="name", description="Emote Name", required=True, option_type=3)])
+async def delete(ctx : SlashContext, name : str):
+    await ctx.defer()
+    emojis = ctx.guild.emojis
+    for emoji in emojis:
+        if emoji.name == name:
+            await emoji.delete()
+            await ctx.send("Deleted " + emoji.name)
+            break
+
+
 #ANILIST SECTION
 @slash.slash(name="anime",
             description="Search for anime on Anilist",
-            guild_ids=[],
+            guild_ids=Guild_ID,
             options=[create_option(name="title", description="Title of anime", required=True, option_type=3)])
 async def anime(ctx:SlashContext, title):
     embed = animeSearch(title)
@@ -484,7 +490,7 @@ async def anime(ctx:SlashContext, title):
 
 @slash.slash(name="manga",
             description="Search for manga on Anilist",
-            guild_ids=[],
+            guild_ids=Guild_ID,
             options=[create_option(name="title", description="Title of manga", required=True, option_type=3)])
 async def manga(ctx:SlashContext, title):
     embed = mangaSearch(title)
@@ -492,7 +498,7 @@ async def manga(ctx:SlashContext, title):
 
 @slash.slash(name="studio",
             description="Search for studio on Anilist",
-            guild_ids=[],
+            guild_ids=Guild_ID,
             options=[create_option(name="studioname", description="studio name", required=True, option_type=3)])
 async def studio(ctx:SlashContext , studioname):
     embed = studioSearch(studioname)
@@ -500,7 +506,7 @@ async def studio(ctx:SlashContext , studioname):
 
 @slash.slash(name="staff",
             description="Search for staff on Anilist",
-            guild_ids=],
+            guild_ids=Guild_ID,
             options=[create_option(name="staffname", description="staff name", required=True, option_type=3)])
 async def staff(ctx:SlashContext, staffname):
     embed = staffSearch(staffname)
@@ -508,7 +514,7 @@ async def staff(ctx:SlashContext, staffname):
 
 @slash.slash(name="char",
             description="Search for character on Anilist",
-            guild_ids=[],
+            guild_ids=Guild_ID,
             options=[create_option(name="charname", description="name of the character", required=True, option_type=3)])
 async def character(ctx:SlashContext, charname):
     embed = charSearch(charname)
@@ -517,20 +523,57 @@ async def character(ctx:SlashContext, charname):
 
 @slash.slash(name="user",
             description="Search for user on Anilist",
-            guild_ids=[],
+            guild_ids=Guild_ID,
             options=[create_option(name="username", description="username of anilist", required=True, option_type=3)])
 async def user(ctx:SlashContext, username):
     result = generateUserInfo(username)
+    buttons = [u"\u23EA", u"\u2B05", u"\u27A1", u"\u23E9"] # skip to start, left, right, skip to end
+    current = 0
     if result:
         try:
             userEmbed = userSearch(result)
-            await ctx.send(embed=userEmbed)
+            user_pages1 = userEmbed
 
             userAnimeEmbed = userAnime(result)
-            await ctx.send(embed=userAnimeEmbed)
+            user_pages2 = userAnimeEmbed
 
             userMangaEmbed = userManga(result)
-            await ctx.send(embed=userMangaEmbed)
+            user_pages3 = userMangaEmbed
+
+            bot.user_pages = [user_pages1, user_pages2, user_pages3]
+            msg = await ctx.send(embed=bot.user_pages[current])
+
+            for button in buttons:
+                await msg.add_reaction(button)
+        
+            while True:
+                try:
+                    reaction, user = await bot.wait_for("reaction_add", check=lambda reaction, user: user == ctx.author and reaction.emoji in buttons, timeout=60.0)
+
+                except asyncio.TimeoutError:
+                    return print("test")
+
+                else:
+                    previous_page = current
+                    if reaction.emoji == u"\u23EA":
+                        current = 0
+                
+                    elif reaction.emoji == u"\u2B05":
+                        if current > 0:
+                            current -= 1
+                    
+                    elif reaction.emoji == u"\u27A1":
+                        if current < len(bot.user_pages)-1:
+                            current += 1
+
+                    elif reaction.emoji == u"\u23E9":
+                        current = len(bot.user_pages)-1
+
+                    for button in buttons:
+                        await msg.remove_reaction(button, ctx.author)
+
+                    if current != previous_page:
+                        await msg.edit(embed=bot.user_pages[current])
 
         except HTTPException:
             pass
