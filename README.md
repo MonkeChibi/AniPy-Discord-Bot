@@ -16,8 +16,8 @@ Uses the Anilist GraphQL API.
   * Search manga by title/ID
   * Search username ( also displays the user's favourites)
   * Search Character
-  * Search Staff (also displays the studio's top 5 anime)
-  * Search Studio
+  * Search Staff 
+  * Search Studio (also displays the studio's top 5 anime)
 # Requirements :
  * Python 3.9.7+
  * A Discord Developer Account which you can make [here](https://discord.com/developers/docs/intro)
