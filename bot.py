@@ -11,7 +11,10 @@ startTime = time.time()
 print(f"Importing modules...")
 
 import discord
+import asyncio
+import requests
 from discord.ext import commands
+from discord.ext.commands import has_permissions, MissingPermissions
 from discord import Client, Intents, Embed
 from discord_slash import SlashCommand, SlashContext
 from discord_slash.utils.manage_commands import create_choice, create_option, create_permission
@@ -24,10 +27,10 @@ import os.path
 import aiohttp
 from io import BytesIO
 from urllib import parse, request
-from googlesearch import search
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
+import urllib
+import pandas as pd
+from requests_html import HTML
+from requests_html import HTMLSession
 from commands.searchAnime import animeSearch
 from commands.searchManga import mangaSearch
 from commands.searchStudio import studioSearch
@@ -45,13 +48,20 @@ print(f"Importing .env configuration...")
 
 
 
+print(f"Importing .env configuration...")
+
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
-#can cahnge the prefix to anything you like
-#delete 'help_command=None' if you want default help command
-bot = commands.Bot(command_prefix=';', help_command=None)
+bot = commands.Bot(command_prefix=";", intents = discord.Intents.all())
 slash = SlashCommand(bot, sync_commands=True)
+api_key= ""
+iqair_key = ""
+iqair_base = "https://api.airvisual.com/v2/nearest_city?"
+base_url="http://api.openweathermap.org/data/2.5/weather?"
+geo_url_base = "http://api.openweathermap.org/geo/1.0/direct?"
+icon_url_base = "http://openweathermap.org/img/wn/"
+Guild_ID = []
 
 
 print(f"Startup complete!\t[ {(time.time()-startTime):.2f}s ]")
@@ -60,24 +70,69 @@ print(f"Startup complete!\t[ {(time.time()-startTime):.2f}s ]")
 #custom help command
 @slash.slash(name="help", description="Help Command")
 async def help(ctx: SlashContext):
-    embed=discord.Embed(title="Chibi Bot Help", description = "Use prefix '/' before <command>", color=discord.Color.blue())
-    embed.set_author(name='Help')
-    embed.add_field(name=";ping", value = " Check you pingu\n", inline=False)
-    embed.add_field(name=";info", value = "Server stats\n", inline=False)
-    embed.add_field(name=";pfp <@user>", value = "Embeds your profile picture\n", inline=False)
-    embed.add_field(name=";youtube <query>", value ="Search youtube for a video", inline=False)
-    embed.add_field(name=";google <query>", value = "Search Google", inline=False)
-    embed.add_field(name=';anime <title>', value="Search anime by title or ID.", inline=False)
-    embed.add_field(name=';manga <title>', value="Search manga by title or ID.", inline=False)
-    embed.add_field(name=';user <username>', value="Search up a user by their username.", inline=False)
-    embed.add_field(name=';reverse <image link>', value="Search an anime by a link to an image.", inline=False)
-    embed.add_field(name=';studio <studio name>', value="Search a studio by their name.", inline=False)
-    embed.add_field(name=';staff <staff name>', value="Search an actor by their name.", inline=False)
-    embed.add_field(name=';char <character name>', value="Search a character by their name.", inline=False)
-    embed.add_field(name=';add <url> <name>', value="Add an emote", inline=False)
-    embed.add_field(name=';delete <name>', value="Delete an emote", inline=False)
-    embed.set_thumbnail(url=bot.user.avatar_url)
-    await ctx.send(embed=embed)
+    page1 = discord.Embed(title="Chibi Bot Help", description = "Use prefix '/' before commands", color=discord.Color.blue())
+    page1.set_author(name='Help')
+    page1.add_field(name="ping", value = " Check you pingu\n", inline=False)
+    page1.add_field(name="info", value = "Server stats\n", inline=False)
+    page1.add_field(name="pfp ", value = "Embeds your profile picture\n", inline=False)
+    page1.add_field(name="youtube ", value ="Search youtube for a video", inline=False)
+    page1.add_field(name="google ", value = "Search Google", inline=False)
+    page1.set_thumbnail(url=bot.user.avatar_url)
+
+    page2=discord.Embed(title="Chibi Bot Help", description = "Use prefix ';' before <command>", color=discord.Color.blue())
+    page2.set_author(name='Help')
+    page2.add_field(name='anime ', value="Search anime by title or ID.", inline=False)
+    page2.add_field(name='manga ', value="Search manga by title or ID.", inline=False)
+    page2.add_field(name='user ', value="Search up a user by their username.", inline=False)
+    page2.add_field(name='reverse', value="Search an anime by a link to an image.", inline=False)
+    page2.add_field(name='studio ', value="Search a studio by their name.", inline=False)
+    page2.add_field(name='staff ', value="Search an actor by their name.", inline=False)
+    page2.add_field(name='char ', value="Search a character by their name.", inline=False)
+    page2.set_thumbnail(url=bot.user.avatar_url)
+
+    page3=discord.Embed(title="Chibi Bot Help", description = "Use prefix ';' before <command>", color=discord.Color.blue())
+    page3.set_author(name='Help')
+    page3.add_field(name='add ', value="Add an emote", inline=False)
+    page3.add_field(name='delete ', value="Delete an emote", inline=False)
+    page3.add_field(name='weather', value="Search the weather and AQI of any place", inline=False)
+    page3.set_thumbnail(url=bot.user.avatar_url)
+    bot.help_pages = [page1, page2, page3]
+
+    buttons = [u"\u23EA", u"\u2B05", u"\u27A1", u"\u23E9"] # skip to start, left, right, skip to end
+    current = 0
+    msg = await ctx.send(embed=bot.help_pages[current])
+
+    for button in buttons:
+        await msg.add_reaction(button)
+
+    while True:
+        try:
+            reaction, user = await bot.wait_for("reaction_add", check=lambda reaction, user: user == ctx.author and reaction.emoji in buttons, timeout=60.0)
+
+        except asyncio.TimeoutError:
+            return print("test")
+
+        else:
+            previous_page = current
+            if reaction.emoji == u"\u23EA":
+                current = 0
+
+            elif reaction.emoji == u"\u2B05":
+                if current > 0:
+                    current -= 1
+
+            elif reaction.emoji == u"\u27A1":
+                if current < len(bot.help_pages)-1:
+                    current += 1
+
+            elif reaction.emoji == u"\u23E9":
+                current = len(bot.help_pages)-1
+
+            for button in buttons:
+                await msg.remove_reaction(button, ctx.author)
+
+            if current != previous_page:
+                await msg.edit(embed=bot.help_pages[current])
 
 
 #Moderation commands : Kicking/Banning Members
@@ -96,24 +151,47 @@ async def kick(ctx, member : discord.Member, *, reason = None):
     embed.add_field(name=f'User {member} has been kicked',value=f'Reason : {reason}', inline=False)
     await ctx.send(embed=embed)
 
+#Moderation commands
+@slash.slash(name="kick",
+            description="kick members (if you have permission)",
+            guild_ids=Guild_ID,
+            options=[create_option(name="member", description="name of the member", required=True, option_type=6),
+                    create_option(name="reason", description="Reason for kick", required=False, option_type=3)]
+            )
+@bot.command(pass_context=True, name="kick")
+@has_permissions(ban_members = True, manage_roles=True)
+async def kick(ctx, member : discord.Member, *, reason = None):
+    await member.kick(reason=reason)
+    embed = discord.Embed(title='Chibi Bot', description='Moderation', color=discord.Color.red())
+    embed.add_field(name=f'User {member} has been kicked',value=f'Reason : {reason}', inline=False)
+    await ctx.send(embed=embed)
+@kick.error
+async def kick_error(ctx, error):
+    if isinstance(error, MissingPermissions):
+        text = "Sorry you do not have the perms"
+        await bot.send_message(ctx.message.channel, text)
+
+
 @slash.slash(name="ban",
             description="ban members (if you have permission)",
-            guild_ids=[],
+            guild_ids=Guild_ID,
             options=[create_option(name="member", description="name of the member", required=True, option_type=6),
                     create_option(name="reason", description="Reason for ban", required=False, option_type=3)]
             )
-@commands.has_permissions(ban_members = True)
+@has_permissions(ban_members = True, manage_roles=True)
 async def ban(ctx, member : discord.Member, *, reason = None):
     await member.ban(reason = reason)
     embed = discord.Embed(title='Chibi Bot', description='Moderation', color=discord.Color.red())
     embed.add_field(name=f'User {member} has been banned',value=f'Reason : {reason}', inline=False)
     await ctx.send(embed=embed)
 
+
+
 @slash.slash(name="unban",
             description="unban member",
-            guild_ids=[],
+            guild_ids=Guild_ID,
             options=[create_option(name="member", description="name of the member", required=True, option_type=3)])
-@commands.has_permissions(administrator = True)
+@has_permissions(administrator = True, manage_roles=True)
 async def unban(ctx:SlashContext, member):
     banned_users = await ctx.guild.bans()
     member_name, member_discriminator = member.split("#")
@@ -128,6 +206,7 @@ async def unban(ctx:SlashContext, member):
             await ctx.send(embed=embed)
 
             return
+
 
 
 #ping command
