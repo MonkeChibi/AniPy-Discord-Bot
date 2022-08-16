@@ -383,6 +383,62 @@ async def info(ctx:SlashContext):
     embed.set_thumbnail(url=f"{ctx.guild.icon_url}")
     await ctx.send(embed=embed))
 
+	
+#Weather Command
+@slash.slash(name="weather",
+            description="Weather Forecast",
+            guild_ids=Guild_ID,
+            options=[create_option(name="city", description="City Name", required=True, option_type=3)])
+async def weather(ctx:SlashContext , city:str):
+    await ctx.defer()
+    city_name=city
+    complete_url=base_url + "appid=" + api_key + "&q=" + city_name
+    response = requests.get(complete_url)
+    x = response.json()
+    complete_geo_url = geo_url_base + "q=" + city_name + "&limit=1&appid=" + api_key
+    response2 = requests.get(complete_geo_url)
+    k = response2.json()
+    lat = k[0]["lat"]
+    lat_r = str(lat)
+    lon = k[0]["lon"]
+    lon_r = str(lon)
+    complete_iqair = iqair_base + "lat=" + lat_r + "&lon=" + lon_r + "&key=" + iqair_key
+    payload={}
+    headers = {}
+    response4 = response = requests.request("GET", complete_iqair, headers=headers, data=payload)
+    v = response4.json()
+    if x["cod"] != "404" :
+        y = x["main"]
+        current_temperature = y["temp"]
+        current_temperature_celsiuis = str(round(current_temperature - 273.15))
+        current_pressure = y["pressure"]
+        current_humidity = y["humidity"]
+        feels_like = y["feels_like"]
+        feels_like_celsiuis = str(round(feels_like - 273.15))
+        z = x["weather"]
+        weather_description = z[0]["description"]
+        weather_icon_id = z[0]["icon"]
+        complete_icon_url = icon_url_base + weather_icon_id + "@2x.png"
+        b = v["data"]
+        aqi_main = b["current"]["pollution"]["aqius"]
+        embed = discord.Embed(title=f"Weather in {city_name}",
+                              timestamp=datetime.datetime.utcnow(),
+                              color=discord.Colour.magenta())
+        embed.add_field(name="Descripition", value=f"**{weather_description}**", inline=False)
+        embed.add_field(name="Temperature(C)", value=f"**{current_temperature_celsiuis}°C**")
+        embed.add_field(name="Feels Like(C)", value=f"**{feels_like_celsiuis}°C**")
+        embed.add_field(name="Humidity(%)", value=f"**{current_humidity}%**", inline=False)
+        embed.add_field(name="Atmospheric Pressure(hPa)", value=f"**{current_pressure}hPa**", inline=False)
+        embed.add_field(name="AQI", value=f"**{aqi_main}**", inline = False)
+        embed.set_thumbnail(url=complete_icon_url)
+        embed.set_footer(text=f"Requested by {ctx.author.name}")
+        await ctx.send(embed=embed)
+    else:
+        embed = discord.Embed(description="City does not exist.")
+        await ctx.send(embed=embed)
+
+	
+	
 #EMOJI ADDING/Removing
 @slash.slash(name="add",
             description="add an emote",
