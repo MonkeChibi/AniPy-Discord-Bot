@@ -10,6 +10,7 @@ Uses the Anilist GraphQL API.
 * emoji add/delete
 * kick members
 * ban/unban members
+* weather forecast command
 * Anilist commands : 
   * Search anime by title/ID
   * Search manga by title/ID
