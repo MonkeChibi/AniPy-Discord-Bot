@@ -30,4 +30,3 @@
   4. Remember to put all the required API keys in correct places.
   5. Go into the directory folder and execute command `pip install -r requirements.txt`.
   6. Execute the bot with `python bot.py` command
-  7. (*Optional*) If to be deployed on Heroku Make a procfile with `<worker : python Your_Bot_Name.py>` inside and no extensions.
