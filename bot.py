@@ -604,6 +604,7 @@ async def on_message(message):
         else:
             return
 
+#Make the bot react to certain texts present in a message
 @bot.listen()
 async def on_message(message):
     if 'cool' in message.content.lower():    #Replace cool with preferred keyword(s)
