@@ -27,6 +27,6 @@
   1. Clone this repo.
   2. Modify the discord token in [.env](https://github.com/saronik/PythonDiscordBot/blob/main/.env) after getting the token the Discord Developer Portal
   3. Get your credentials.json file from [here](https://console.cloud.google.com/apis/credentials) after creating a project first. (Be sure the .json is in the same directory as the python(.py) or it won't work).
-  4. Remember to put all the required API keys in correct places.
+  4. Remember to put all the required API keys in correct places along with the guild IDs of the server(s)
   5. Go into the directory folder and execute command `pip install -r requirements.txt`.
   6. Execute the bot with `python bot.py` command
